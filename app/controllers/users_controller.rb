@@ -2,6 +2,7 @@ class UsersController < ApplicationController
   before_filter :authenticate, :only => [:index, :edit, :update, :destroy]
   before_filter :correct_user, :only => [:edit, :update]
   before_filter :admin_user,   :only => :destroy
+  before_filter :signed_in_user, :only => [:new, :create]
   
   def index
     @title = "All users"
@@ -10,6 +11,7 @@ class UsersController < ApplicationController
   
   def show
     @user = User.find(params[:id])
+	@microposts = @user.microposts.paginate(:page => params[:page])
 	@title = @user.name
   end
 
@@ -18,7 +20,7 @@ class UsersController < ApplicationController
     @title = "Sign up"
   end
   
-  def create
+  def create  
     @user = User.new(params[:user])
     if @user.save
 	  sign_in @user
@@ -48,15 +50,20 @@ class UsersController < ApplicationController
   end  
   
   def destroy
-    User.find(params[:id]).destroy
-    flash[:success] = "User destroyed."
-    redirect_to users_path
+	#Remember that params are strings, so we need to convert the id int to a string :P
+	if current_user.id.to_s == params[:id].to_s
+      flash[:success] = "You can't delete yourself, sorry."
+      redirect_to users_path
+	else
+	  #print (current_user.id.to_s == params[:id]).to_s + " : " + params[:id].to_s + " - " +current_user.id.to_s
+	  User.find(params[:id]).destroy
+	  #flash[:notice] = (current_user.id.to_s == params[:id]).to_s + " : " + params[:id].to_s + " - " +current_user.id.to_s
+	  flash[:success] = "User destroyed."
+      redirect_to users_path
+	end
   end  
   
   private
-	def authenticate
-      deny_access unless signed_in?
-    end
   
     def correct_user
       @user = User.find(params[:id])
@@ -67,4 +74,10 @@ class UsersController < ApplicationController
       redirect_to(root_path) unless current_user.admin?
     end  
   
+    def signed_in_user
+	  if signed_in?
+	    flash[:notice] = "You're already a user, crazy person."
+	    redirect_to(root_path)
+	  end
+	end
 end
